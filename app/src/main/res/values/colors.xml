@@ -1,0 +1,8 @@
+<resources>
+    <color name="yellow_top">#FFE600</color>
+    <color name="red_card">#F44336</color>
+    <color name="green_pill">#4CAF50</color>
+    <color name="gold_number">#43A047</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>
