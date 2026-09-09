@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -84,15 +85,17 @@ private fun HomeScreen() {
     var refreshTrigger by remember { mutableStateOf(0) }
 
     LaunchedEffect(refreshTrigger) {
-        state = LiveState.Loading
-        when (val result = SettradeRepository.fetchLiveSetIndex()) {
-            is SettradeRepository.FetchResult.Success -> {
-                val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-                state = LiveState.Loaded(result.data, time)
+        while (true) {
+            when (val result = SettradeRepository.fetchLiveSetIndex()) {
+                is SettradeRepository.FetchResult.Success -> {
+                    val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+                    state = LiveState.Loaded(result.data, time)
+                }
+                is SettradeRepository.FetchResult.Failure -> {
+                    state = LiveState.Failed(result.reason)
+                }
             }
-            is SettradeRepository.FetchResult.Failure -> {
-                state = LiveState.Failed(result.reason)
-            }
+            delay(3000)
         }
     }
 
@@ -237,3 +240,4 @@ private fun LabeledValue(label: String, value: String, valueColor: Color = Color
         )
     }
 }
+                
