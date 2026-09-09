@@ -16,6 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val YellowTop = Color(0xFFFFE600)
 private val RedCard = Color(0xFFF44336)
@@ -69,30 +72,92 @@ private fun TopBar(current: Tab, onTabSelected: (Tab) -> Unit) {
     }
 }
 
+private sealed interface LiveState {
+    data object Loading : LiveState
+    data class Loaded(val data: SettradeRepository.LiveMarketData, val fetchedAt: String) : LiveState
+    data object Failed : LiveState
+}
+
 @Composable
 private fun HomeScreen() {
-    val latest = SampleData.today.last()
+    var state by remember { mutableStateOf<LiveState>(LiveState.Loading) }
+    var refreshTrigger by remember { mutableStateOf(0) }
+
+    LaunchedEffect(refreshTrigger) {
+        state = LiveState.Loading
+        val live = SettradeRepository.fetchLiveSetIndex()
+        state = if (live != null) {
+            val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            LiveState.Loaded(live, time)
+        } else {
+            LiveState.Failed
+        }
+    }
 
     Column(
         Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = latest.twoD,
-            fontSize = 110.sp,
-            fontWeight = FontWeight.Bold,
-            color = GoldGreen
-        )
+
+        when (val s = state) {
+            is LiveState.Loading -> {
+                CircularProgressIndicator(color = GoldGreen)
+                Spacer(Modifier.height(12.dp))
+                Text("Fetching live SET Index...", fontSize = 14.sp, color = Color.DarkGray)
+            }
+            is LiveState.Loaded -> {
+                Text(
+                    text = s.data.twoD,
+                    fontSize = 110.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldGreen
+                )
+                Spacer(Modifier.height(8.dp))
+                Text("Live \u2022 updated ${s.fetchedAt}", fontSize = 14.sp, color = Color.DarkGray)
+                Spacer(Modifier.height(16.dp))
+                LiveResultCard(s.data)
+            }
+            is LiveState.Failed -> {
+                val fallback = SampleData.today.last()
+                Text(
+                    text = fallback.twoD,
+                    fontSize = 110.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GoldGreen
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Couldn't reach settrade.com \u2014 showing sample data",
+                    fontSize = 13.sp,
+                    color = Color(0xFFD32F2F)
+                )
+                Spacer(Modifier.height(16.dp))
+                SampleData.today.forEach { result ->
+                    ResultCard(result)
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
+        }
 
         Spacer(Modifier.height(8.dp))
-        Text("Updated: ${latest.date.ifBlank { "today" }} ${latest.time}", fontSize = 14.sp, color = Color.DarkGray)
+        OutlinedButton(onClick = { refreshTrigger++ }) {
+            Text("Refresh")
+        }
+    }
+}
 
-        Spacer(Modifier.height(16.dp))
-
-        SampleData.today.forEach { result ->
-            ResultCard(result)
-            Spacer(Modifier.height(16.dp))
+@Composable
+private fun LiveResultCard(data: SettradeRepository.LiveMarketData) {
+    Surface(shape = RoundedCornerShape(16.dp), color = RedCard, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("SET (live)", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                LabeledValue("SET", "%.2f".format(data.set))
+                LabeledValue("Value", "%,.2f".format(data.value))
+                LabeledValue("2D", data.twoD, valueColor = Color(0xFFFFEB3B), big = true)
+            }
         }
     }
 }
