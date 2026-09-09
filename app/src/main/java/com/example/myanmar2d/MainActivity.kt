@@ -75,7 +75,7 @@ private fun TopBar(current: Tab, onTabSelected: (Tab) -> Unit) {
 private sealed interface LiveState {
     data object Loading : LiveState
     data class Loaded(val data: SettradeRepository.LiveMarketData, val fetchedAt: String) : LiveState
-    data object Failed : LiveState
+    data class Failed(val reason: String) : LiveState
 }
 
 @Composable
@@ -85,12 +85,14 @@ private fun HomeScreen() {
 
     LaunchedEffect(refreshTrigger) {
         state = LiveState.Loading
-        val live = SettradeRepository.fetchLiveSetIndex()
-        state = if (live != null) {
-            val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-            LiveState.Loaded(live, time)
-        } else {
-            LiveState.Failed
+        when (val result = SettradeRepository.fetchLiveSetIndex()) {
+            is SettradeRepository.FetchResult.Success -> {
+                val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                state = LiveState.Loaded(result.data, time)
+            }
+            is SettradeRepository.FetchResult.Failure -> {
+                state = LiveState.Failed(result.reason)
+            }
         }
     }
 
@@ -128,9 +130,10 @@ private fun HomeScreen() {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Couldn't reach settrade.com \u2014 showing sample data",
-                    fontSize = 13.sp,
-                    color = Color(0xFFD32F2F)
+                    "Live fetch failed: ${s.reason}",
+                    fontSize = 12.sp,
+                    color = Color(0xFFD32F2F),
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 Spacer(Modifier.height(16.dp))
                 SampleData.today.forEach { result ->
