@@ -74,7 +74,7 @@ object SettradeRepository {
 
         for (match in setTokenRegex.findAll(plainText)) {
             val windowStart = match.range.last + 1
-            val windowEnd = (windowStart + 300).coerceAtMost(plainText.length)
+            val windowEnd = (windowStart + 700).coerceAtMost(plainText.length)
             val window = plainText.substring(windowStart, windowEnd)
 
             val numbers = numberRegex.findAll(window)
@@ -87,7 +87,7 @@ object SettradeRepository {
             val candidateIndex = numbers.first()
             if (candidateIndex < 500 || candidateIndex > 5000) continue
 
-            val candidateValue = numbers.last()
+            val candidateValue = numbers.max()
             return LiveMarketData(set = candidateIndex, value = candidateValue)
         }
 
