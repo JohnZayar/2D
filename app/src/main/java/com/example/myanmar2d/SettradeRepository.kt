@@ -29,7 +29,7 @@ object SettradeRepository {
             }
             val data = parseSetRow(html)
                 ?: return@withContext FetchResult.Failure(
-                    "Fetched page (${html.length} chars) but couldn't find SET row"
+                    "Fetched page (${html.length} chars) but couldn't find a plausible SET row"
                 )
             FetchResult.Success(data)
         } catch (e: Exception) {
@@ -60,34 +60,37 @@ object SettradeRepository {
     }
 
     private fun parseSetRow(html: String): LiveMarketData? {
-        val candidates = listOf(
-            Regex("""index=SET["'&]"""),
-            Regex("""index=SET(?=["'&\s])"""),
-            Regex("""[?&]index=SET\b""")
-        )
-        val match = candidates.firstNotNullOfOrNull { it.find(html) } ?: return null
+        val withoutScripts = html
+            .replace(Regex("(?is)<script.*?</script>"), " ")
+            .replace(Regex("(?is)<style.*?</style>"), " ")
 
-        var window = html.substring(
-            match.range.first,
-            (match.range.first + 4000).coerceAtMost(html.length)
-        )
-
-        val rowEnd = window.indexOf("</tr>")
-        if (rowEnd != -1) window = window.substring(0, rowEnd)
-
-        val plainText = window.replace(Regex("<[^>]*>"), " ")
+        val plainText = withoutScripts
+            .replace(Regex("<[^>]*>"), " ")
+            .replace(Regex("&nbsp;", RegexOption.IGNORE_CASE), " ")
+            .replace(Regex("\\s+"), " ")
 
         val numberRegex = Regex("""-?[0-9][0-9,]*\.[0-9]+""")
-        val numbers = numberRegex.findAll(plainText)
-            .map { it.value.replace(",", "") }
-            .mapNotNull { it.toDoubleOrNull() }
-            .toList()
+        val setTokenRegex = Regex("""\bSET\b""")
 
-        if (numbers.size < 2) return null
+        for (match in setTokenRegex.findAll(plainText)) {
+            val windowStart = match.range.last + 1
+            val windowEnd = (windowStart + 300).coerceAtMost(plainText.length)
+            val window = plainText.substring(windowStart, windowEnd)
 
-        val setIndex = numbers.first()
-        val tradingValue = numbers.last()
+            val numbers = numberRegex.findAll(window)
+                .map { it.value.replace(",", "") }
+                .mapNotNull { it.toDoubleOrNull() }
+                .toList()
 
-        return LiveMarketData(set = setIndex, value = tradingValue)
+            if (numbers.size < 2) continue
+
+            val candidateIndex = numbers.first()
+            if (candidateIndex < 500 || candidateIndex > 5000) continue
+
+            val candidateValue = numbers.last()
+            return LiveMarketData(set = candidateIndex, value = candidateValue)
+        }
+
+        return null
     }
 }
