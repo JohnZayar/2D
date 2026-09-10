@@ -95,10 +95,10 @@ private data class LivePreview(
 
 private const val SLOT_1_H = 12
 private const val SLOT_1_M = 1
-private const val SLOT_1_S = 10
+private const val SLOT_1_S = 4
 private const val SLOT_2_H = 16
 private const val SLOT_2_M = 30
-private const val SLOT_2_S = 10
+private const val SLOT_2_S = 4
 private const val CAPTURE_GRACE_SECONDS = 180
 
 private fun secondsSinceMidnight(h: Int, m: Int, s: Int) = h * 3600 + m * 60 + s
@@ -139,7 +139,7 @@ private fun HomeScreen() {
                 }
                 is SettradeRepository.FetchResult.Failure -> lastError = result.reason
             }
-            delay(5000)
+            delay(4000)
         }
     }
 
@@ -192,7 +192,7 @@ private fun HomeScreen() {
     ) {
         Spacer(Modifier.height(8.dp))
 
-        if (livePreview != null) {
+                if (livePreview != null) {
             Text(
                 text = livePreview!!.twoD,
                 fontSize = 110.sp,
@@ -201,12 +201,17 @@ private fun HomeScreen() {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Live \u2022 ${livePreview!!.date} ${livePreview!!.time}",
+                "Live • ${livePreview!!.date} ${livePreview!!.time}",
                 fontSize = 14.sp,
                 color = Color.DarkGray
             )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Text("SET: %.2f".format(livePreview!!.set), fontSize = 15.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                Text("Value: %,.2f".format(livePreview!!.value), fontSize = 15.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+            }
         } else {
-            CircularProgressIndicator(color = GoldGreen)
+        CircularProgressIndicator(color = GoldGreen)
             Spacer(Modifier.height(8.dp))
             Text("Fetching live SET Index...", fontSize = 14.sp, color = Color.DarkGray)
         }
